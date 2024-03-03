@@ -28,6 +28,7 @@ namespace webapi.Services
         }
 
 
+        // apply pagination filter to GET all Users
         public async Task<IEnumerable<object>> GetUsers(PaginationFilter filter)
         {
             try

@@ -26,6 +26,7 @@ namespace webapi.Services
             _mapper = mapper;
         }
 
+        // apply pagination filter to GET all Products
         public async Task<IEnumerable<object>> GetProducts(PaginationFilter filter)
         {
             var products = await _context.Products.Skip((filter.pageNumber - 1) * filter.pageSize)
