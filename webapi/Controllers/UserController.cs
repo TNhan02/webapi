@@ -46,8 +46,20 @@ namespace webapi.Controllers
         [HttpPatch("{id}")]
         public async Task<IActionResult> PatchUser(int id, [FromBody] DTOUser editUser)
         {
-            var editedUser = await _userService.PatchUser(id, editUser);
-            return Json(editedUser);
+            if(User.HasClaim("Role", "Admin"))
+            {
+                var editedUser = await _userService.AdminPatchUser(id, editUser);
+                return Json(editedUser);
+            }
+            else if(User.HasClaim("Role", "Worker"))
+            {
+                var editedUser = await _userService.WorkerPatchUser(id, editUser);
+                return Json(editedUser);
+            }
+            else
+            {
+                return BadRequest("Admin or Worker role is required! Please check your token again");
+            }
         }
 
         [HttpDelete("{id}")]

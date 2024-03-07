@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using BCrypt.Net;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using webapi.Context;
@@ -11,7 +12,8 @@ namespace webapi.Services
     {
         Task<IEnumerable<object>> GetUsers(PaginationFilter filter);
         Task<object> GetUser(int id);
-        Task<object> PatchUser(int id, [FromBody] DTOUser editUser);
+        Task<object> AdminPatchUser(int id, [FromBody] DTOUser editUser);
+        Task<object> WorkerPatchUser(int id, [FromBody] DTOUser editUser);
         Task<object> PostUser([FromBody] DTOUser newUser);
         Task<object> DeleteUser(int id);
     }
@@ -28,7 +30,6 @@ namespace webapi.Services
         }
 
 
-        // apply pagination filter to GET all Users
         public async Task<IEnumerable<object>> GetUsers(PaginationFilter filter)
         {
             try
@@ -79,7 +80,7 @@ namespace webapi.Services
             }
         }
 
-        public async Task<object> PatchUser(int id, [FromBody] DTOUser editUser)
+        public async Task<object> AdminPatchUser(int id, [FromBody] DTOUser editUser)
         {
             var user = await _context.Users.FirstOrDefaultAsync(user => user.Id == id);
 
@@ -90,7 +91,29 @@ namespace webapi.Services
 
             try
             {
-                AdjustUserProperties(user, editUser);
+                AdminAdjustUserProperties(user, editUser);
+                await _context.SaveChangesAsync();
+
+                return editUser;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception(ex.Message);
+            }
+        }
+
+        public async Task<object> WorkerPatchUser(int id, [FromBody] DTOUser editUser)
+        {
+            var user = await _context.Users.FirstOrDefaultAsync(user => user.Id == id);
+
+            if (user == null)
+            {
+                return new NotFoundObjectResult($"User {id} not found to edit");
+            }
+
+            try
+            {
+                WorkerAdjustUserProperties(user, editUser);
                 await _context.SaveChangesAsync();
 
                 return editUser;
@@ -140,7 +163,7 @@ namespace webapi.Services
             return null;
         }
 
-        private void AdjustUserProperties(User user, DTOUser editUser)
+        private void AdminAdjustUserProperties(User user, DTOUser editUser)
         {
             var properties = typeof(DTOUser).GetProperties();
 
@@ -150,8 +173,56 @@ namespace webapi.Services
 
                 if (newValue != null)
                 {
-                    var userProperty = user.GetType().GetProperty(property.Name);
-                    userProperty.SetValue(user, newValue);
+                    switch (property.Name)
+                    {
+                        case "Password":
+                            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword((string)newValue);
+                            break;
+                        case "UserRole":
+                            if (editUser.UserRole == "Admin" || editUser.UserRole == "Worker")
+                            {
+                                user.UserRole = editUser.UserRole;
+                            }
+                            else
+                            {
+                                throw new Exception("An inappropriate role is set! Please check it again!");
+                            }
+                            break;
+                        default:
+                            var userProperty = user.GetType().GetProperty(property.Name);
+                            userProperty.SetValue(user, newValue);
+                            break;
+                    }
+                }
+            }
+        }
+
+        private void WorkerAdjustUserProperties(User user, DTOUser editUser)
+        {
+            var workerEditProperty = "PasswordHash";
+            var properties = typeof(DTOUser).GetProperties();
+
+            foreach (var property in properties)
+            {
+                var newValue = property.GetValue(editUser);
+                if (workerEditProperty == property.Name)
+                {
+                    if (newValue != null)
+                    {
+                        if (property.Name == "Password")
+                        {
+                            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword((string)newValue);
+                        }
+                        else
+                        {
+                            var userProperty = user.GetType().GetProperty(property.Name);
+                            userProperty.SetValue(user, newValue);
+                        }
+                    }
+                }
+                else
+                {
+                    throw new Exception("Inappropriate properties filled! Please check your right again or contact the administrator to have more information");
                 }
             }
         }
