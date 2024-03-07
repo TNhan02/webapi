@@ -18,8 +18,15 @@ namespace webapi.Controllers
         [HttpGet(Name = "GetAllProducts")]
         public async Task<IActionResult> GetProducts([FromQuery] PaginationFilter filter)
         {
-            var products = await _productService.GetProducts(filter);
-            return Json(products);
+            if(User.HasClaim("Role", "Admin"))
+            {
+                var products = await _productService.GetProducts(filter);
+                return Json(products);
+            }
+            else
+            {
+                return BadRequest("Admin role is required! Please check your token again!");
+            }
         }
 
         [HttpGet("{id}")]
