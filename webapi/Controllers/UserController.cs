@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using webapi.DataHandler;
 using webapi.Models.DTO;
 using webapi.Services;
 
@@ -18,7 +19,7 @@ namespace webapi.Controllers
         [HttpGet]
         public async Task<IActionResult> GetUsers([FromQuery] PaginationFilter filter)
         {
-            if (User.HasClaim("Role", "Admin"))
+            if (User.HasClaim("Role", UserTypes.Admin))
             {
                 var users = await _userService.GetUsers(filter);
                 return Json(users);
@@ -46,12 +47,12 @@ namespace webapi.Controllers
         [HttpPatch("{id}")]
         public async Task<IActionResult> PatchUser(int id, [FromBody] DTOUser editUser)
         {
-            if(User.HasClaim("Role", "Admin"))
+            if(User.HasClaim("Role", UserTypes.Admin))
             {
                 var editedUser = await _userService.AdminPatchUser(id, editUser);
                 return Json(editedUser);
             }
-            else if(User.HasClaim("Role", "Worker"))
+            else if(User.HasClaim("Role", UserTypes.Worker))
             {
                 var editedUser = await _userService.WorkerPatchUser(id, editUser);
                 return Json(editedUser);

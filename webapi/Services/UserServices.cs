@@ -3,6 +3,7 @@ using BCrypt.Net;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using webapi.Context;
+using webapi.DataHandler;
 using webapi.Models;
 using webapi.Models.DTO;
 
@@ -58,25 +59,32 @@ namespace webapi.Services
 
         public async Task<object> GetUser(int id)
         {
-            var user = await _context.Users.FirstOrDefaultAsync(user => user.Id == id);
-
-            if (user != null)
+            try
             {
-                var userDTO = new
+                var user = await _context.Users.FirstOrDefaultAsync(user => user.Id == id);
+
+                if (user != null)
                 {
-                    Id = user.Id,
-                    UserRole = user.UserRole,
-                    Username = user.Username,
-                    Name = user.Name,
-                    Description = user.Description,
-                    AdditionalInfo = user.AdditionalInfo
-                };
+                    var userDTO = new
+                    {
+                        Id = user.Id,
+                        UserRole = user.UserRole,
+                        Username = user.Username,
+                        Name = user.Name,
+                        Description = user.Description,
+                        AdditionalInfo = user.AdditionalInfo
+                    };
 
-                return userDTO;
+                    return userDTO;
+                }
+                else
+                {
+                    return new NotFoundObjectResult($"User {id} not found");
+                }
             }
-            else
+            catch(Exception ex)
             {
-                return new NotFoundObjectResult($"User {id} not found");
+                throw new Exception(ex.Message);
             }
         }
 
@@ -129,6 +137,14 @@ namespace webapi.Services
             if (newUser == null)
             {
                 return new BadRequestObjectResult("Missing input data to create a new user");
+            }
+            else if(newUser.UserRole != null && !UserTypeHandler.IsValidUserRole(newUser.UserRole))
+            {
+                return new InvalidDataException("Inappropriate role is set! Please provide an available user role");
+            }
+            else if(_context.Users.Any(user => user.Username == newUser.Username))
+            {
+                return new KeyNotFoundException($"A user with the provided username '{newUser.Username}' already exists! Please provide another username!");
             }
 
             try

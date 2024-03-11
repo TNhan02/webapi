@@ -15,6 +15,7 @@ namespace webapi.Services
         Task<object> PostProduct([FromBody] DTOProduct newProduct);
         Task<object> DeleteProduct(int id);
     }
+
     public class ProductServices : IProduct
     {
         private ServerContext _context;
@@ -29,42 +30,56 @@ namespace webapi.Services
         // apply pagination filter to GET all Products
         public async Task<IEnumerable<object>> GetProducts(PaginationFilter filter)
         {
-            var products = await _context.Products.Skip((filter.pageNumber - 1) * filter.pageSize)
+            try
+            {
+                var products = await _context.Products.Skip((filter.pageNumber - 1) * filter.pageSize)
                                                 .Take(filter.pageSize)
                                                 .ToListAsync();
 
-            var productDTOs = products.Select(product => new
-            {
-                Id = product.Id,
-                Name = product.Name,
-                Quantity = product.Quantity,
-                Description = product.Description,
-                AdditionalInfo = product.AdditionalInfo
-            }).ToList();
-
-            return productDTOs;
-        }
-
-        public async Task<object> GetProduct(int id)
-        {
-            var product = await _context.Products.FirstOrDefaultAsync(product => product.Id == id);
-
-            if (product != null)
-            {
-                var productDTO = new
+                var productDTOs = products.Select(product => new
                 {
                     Id = product.Id,
                     Name = product.Name,
                     Quantity = product.Quantity,
                     Description = product.Description,
                     AdditionalInfo = product.AdditionalInfo
-                };
+                }).ToList();
 
-                return productDTO;
+                return productDTOs;
             }
-            else
+            catch(Exception ex)
             {
-                return new NotFoundObjectResult($"Product {id} not found");
+                throw new Exception(ex.Message);
+            }
+        }
+
+        public async Task<object> GetProduct(int id)
+        {
+            try
+            {
+                var product = await _context.Products.FirstOrDefaultAsync(product => product.Id == id);
+
+                if (product != null)
+                {
+                    var productDTO = new
+                    {
+                        Id = product.Id,
+                        Name = product.Name,
+                        Quantity = product.Quantity,
+                        Description = product.Description,
+                        AdditionalInfo = product.AdditionalInfo
+                    };
+
+                    return productDTO;
+                }
+                else
+                {
+                    return new NotFoundObjectResult($"Product {id} not found");
+                }
+            }
+            catch(Exception ex)
+            {
+                throw new Exception(ex.Message);
             }
         }
 
